@@ -1,0 +1,4 @@
+# Cloudflare Pages redirects
+# Admin route — Zero Trust will gate this at the network level
+/admin  /admin/index.html  200
+/admin/ /admin/index.html  200

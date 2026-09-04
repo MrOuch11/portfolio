@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Professional portfolio timeline — a visual journey through work, skills and milestones.">
+  <title>Portfolio — Timeline</title>
+
+  <link rel="stylesheet" href="../assets/css/mod-shared.css">
+  <style>
+    /* ── Timeline layout ── */
+    .timeline-wrapper {
+      position: relative;
+      padding-top: var(--header-h);
+    }
+
+    /* Scroll spacer — JS sets height based on entry count */
+    .timeline-scroll-track {
+      position: relative;
+    }
+
+    /* Sticky viewport that the horizontal strip lives in */
+    .timeline-sticky {
+      position: sticky;
+      top: var(--header-h);
+      height: calc(var(--timeline-h) - var(--header-h));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* The axis rule that spans all panels */
+    .timeline-axis {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--c-rule-strong);
+      transform: translateY(-50%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Horizontal strip of panels */
+    .timeline-strip {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      height: 100%;
+      will-change: transform;
+    }
+
+    /* Individual entry panel */
+    .timeline-panel {
+      flex: 0 0 var(--panel-w);
+      width: var(--panel-w);
+      height: 100%;
+      display: grid;
+      grid-template-rows: 1fr auto 1fr;
+      position: relative;
+      cursor: pointer;
+    }
+
+    /* Year label on axis */
+    .panel-year {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-2);
+      pointer-events: none;
+    }
+
+    .panel-year__dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--c-bg);
+      border: 2px solid var(--c-text);
+      transition: background var(--dur-med), border-color var(--dur-fast), transform var(--dur-med) var(--ease-back);
+      pointer-events: all;
+      cursor: pointer;
+    }
+
+    .timeline-panel.is-active .panel-year__dot,
+    .timeline-panel:hover .panel-year__dot {
+      background: var(--c-accent);
+      border-color: var(--c-accent);
+      transform: scale(1.5);
+    }
+
+    .panel-year__label {
+      font-family: var(--f-mono);
+      font-size: var(--fs-sm);
+      letter-spacing: 0.1em;
+      color: var(--c-text);
+      background: var(--c-bg);
+      padding: var(--sp-1) var(--sp-2);
+      transition: color var(--dur-fast);
+    }
+
+    .timeline-panel.is-active .panel-year__label {
+      color: var(--c-accent);
+    }
+
+    /* Upper half: media */
+    .panel-upper {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: var(--sp-8) var(--sp-16) var(--sp-6);
+      overflow: hidden;
+    }
+
+    /* Lower half: text */
+    .panel-lower {
+      display: flex;
+      align-items: flex-start;
+      padding: var(--sp-6) var(--sp-16) var(--sp-8);
+      overflow: hidden;
+    }
+
+    .panel-title-block {
+      max-width: 480px;
+    }
+
+    .panel-title-block__role {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-accent);
+      margin-bottom: var(--sp-2);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-expo);
+    }
+
+    .panel-title-block__title {
+      font-family: var(--f-display);
+      font-size: var(--fs-xl);
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--c-text);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity var(--dur-slow) var(--ease-expo), transform var(--dur-slow) var(--ease-expo);
+    }
+
+    .panel-title-block__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+      margin-top: var(--sp-4);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity var(--dur-med) 0.1s, transform var(--dur-med) 0.1s var(--ease-expo);
+    }
+
+    .tag {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: var(--sp-1) var(--sp-3);
+      border: 1px solid var(--c-rule);
+      color: var(--c-text-muted);
+      border-radius: 1px;
+    }
+
+    /* Active panel reveals text */
+    .timeline-panel.is-active .panel-title-block__role,
+    .timeline-panel.is-active .panel-title-block__title,
+    .timeline-panel.is-active .panel-title-block__tags {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Media thumbnail */
+    .panel-media-thumb {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      border-radius: 2px;
+      opacity: 0;
+      transform: translateY(-12px) scale(0.97);
+      transition: opacity var(--dur-slow) var(--ease-expo), transform var(--dur-slow) var(--ease-expo);
+    }
+
+    .timeline-panel.is-active .panel-media-thumb {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .panel-media-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .panel-media-thumb__count {
+      position: absolute;
+      bottom: var(--sp-3);
+      right: var(--sp-3);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.08em;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: var(--sp-1) var(--sp-2);
+      border-radius: 1px;
+    }
+
+    /* Hint arrows */
+    .panel-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px; height: 44px;
+      color: var(--c-text-muted);
+      opacity: 0.3;
+      transition: opacity var(--dur-fast);
+      pointer-events: none;
+    }
+    .panel-arrow--left { left: var(--sp-6); }
+    .panel-arrow--right { right: var(--sp-6); }
+    .timeline-panel:hover .panel-arrow { opacity: 0.6; }
+
+    /* ── Lightbox / Detail overlay ── */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--c-bg);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      will-change: opacity;
+      overflow-y: auto;
+      transition: background var(--dur-med);
+    }
+
+    .lightbox.is-open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .lightbox__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--sp-6) var(--sp-8);
+      border-bottom: 1px solid var(--c-rule);
+      flex-shrink: 0;
+    }
+
+    .lightbox__meta {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-1);
+    }
+
+    .lightbox__year {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-accent);
+    }
+
+    .lightbox__title {
+      font-family: var(--f-display);
+      font-size: var(--fs-2xl);
+      font-weight: 700;
+      line-height: 1.05;
+      color: var(--c-text);
+    }
+
+    .lightbox__close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px; height: 44px;
+      background: none;
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      color: var(--c-text);
+      cursor: pointer;
+      font-size: 1.25rem;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: border-color var(--dur-fast), background var(--dur-fast);
+    }
+    .lightbox__close:hover {
+      border-color: var(--c-text);
+      background: var(--c-accent-dim);
+    }
+
+    .lightbox__body {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 0;
+      flex: 1;
+    }
+
+    @media (max-width: 900px) {
+      .lightbox__body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .lightbox__media-col {
+      padding: var(--sp-8);
+      border-right: 1px solid var(--c-rule);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+
+    @media (max-width: 900px) {
+      .lightbox__media-col {
+        border-right: none;
+        border-bottom: 1px solid var(--c-rule);
+      }
+    }
+
+    .lightbox__media-main {
+      width: 100%;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      border-radius: 2px;
+      background: var(--c-bg-alt);
+      position: relative;
+    }
+
+    .lightbox__media-main img,
+    .lightbox__media-main iframe {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      border: none;
+    }
+
+    .lightbox__media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: var(--sp-2);
+    }
+
+    .lightbox__media-thumb {
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      border-radius: 2px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color var(--dur-fast);
+    }
+
+    .lightbox__media-thumb.is-active,
+    .lightbox__media-thumb:hover {
+      border-color: var(--c-accent);
+    }
+
+    .lightbox__media-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .lightbox__info-col {
+      padding: var(--sp-8);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-6);
+    }
+
+    .lightbox__role {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-accent);
+    }
+
+    .lightbox__description {
+      font-size: var(--fs-md);
+      line-height: 1.7;
+      color: var(--c-text);
+    }
+
+    .lightbox__facts {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+      border-top: 1px solid var(--c-rule);
+      padding-top: var(--sp-6);
+    }
+
+    .fact-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: var(--sp-4);
+      align-items: baseline;
+    }
+
+    .fact-row__label {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--c-text-muted);
+    }
+
+    .fact-row__value {
+      font-size: var(--fs-sm);
+      color: var(--c-text);
+      line-height: 1.5;
+    }
+
+    .lightbox__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+      border-top: 1px solid var(--c-rule);
+      padding-top: var(--sp-4);
+    }
+
+    .lightbox__nav {
+      display: flex;
+      gap: var(--sp-3);
+      border-top: 1px solid var(--c-rule);
+      padding-top: var(--sp-4);
+      margin-top: auto;
+    }
+
+    .lightbox__nav-btn {
+      flex: 1;
+      padding: var(--sp-3) var(--sp-4);
+      background: none;
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      color: var(--c-text);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+    }
+    .lightbox__nav-btn:hover:not(:disabled) {
+      border-color: var(--c-text);
+      background: var(--c-accent-dim);
+      color: var(--c-accent);
+    }
+    .lightbox__nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* ── Intro panel ── */
+    .intro-panel {
+      flex: 0 0 var(--panel-w);
+      width: var(--panel-w);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: var(--sp-8) var(--sp-16);
+      position: relative;
+    }
+
+    .intro-panel__eyebrow {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--c-text-muted);
+      margin-bottom: var(--sp-4);
+    }
+
+    .intro-panel__heading {
+      font-family: var(--f-display);
+      font-size: clamp(3rem, 7vw, var(--fs-4xl));
+      font-weight: 700;
+      line-height: 0.95;
+      color: var(--c-text);
+      margin-bottom: var(--sp-6);
+    }
+
+    .intro-panel__heading em {
+      font-style: italic;
+      color: var(--c-accent);
+    }
+
+    .intro-panel__sub {
+      font-size: var(--fs-base);
+      color: var(--c-text-muted);
+      max-width: 360px;
+      line-height: 1.6;
+      margin-bottom: var(--sp-8);
+    }
+
+    .intro-panel__cta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-3);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--c-text);
+      border-bottom: 1px solid var(--c-rule-strong);
+      padding-bottom: var(--sp-2);
+      width: fit-content;
+    }
+
+    /* Scroll hint animation */
+    .scroll-hint {
+      position: absolute;
+      bottom: var(--sp-8);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-2);
+      color: var(--c-text-muted);
+    }
+
+    .scroll-hint__text {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .scroll-hint__line {
+      width: 1px;
+      height: 40px;
+      background: var(--c-rule);
+      animation: scrollPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes scrollPulse {
+      0%, 100% { transform: scaleY(1); opacity: 0.4; }
+      50% { transform: scaleY(0.6); opacity: 1; }
+    }
+
+    /* ── Nav dots ── */
+    .timeline-nav-dots {
+      position: fixed;
+      bottom: var(--sp-8);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: var(--sp-3);
+      z-index: 50;
+      background: var(--c-bg);
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      padding: var(--sp-3) var(--sp-4);
+    }
+
+    .nav-dot {
+      display: block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--c-rule);
+      border: none;
+      cursor: pointer;
+      transition: background var(--dur-fast), transform var(--dur-med) var(--ease-back);
+      padding: 0;
+    }
+
+    .nav-dot.is-active {
+      background: var(--c-accent);
+      transform: scale(1.5);
+    }
+
+    .nav-dot:hover:not(.is-active) {
+      background: var(--c-text-muted);
+    }
+
+    /* ── Keyboard nav instructions ── */
+    .kbd-hint {
+      position: fixed;
+      bottom: var(--sp-8);
+      right: var(--sp-8);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.06em;
+      color: var(--c-text-muted);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      z-index: 50;
+    }
+
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 var(--sp-2);
+      background: var(--c-bg-alt);
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      font-family: var(--f-mono);
+      font-size: 10px;
+    }
+
+    /* ── Entry number label ── */
+    .panel-index {
+      position: absolute;
+      top: var(--sp-6);
+      right: var(--sp-8);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      color: var(--c-text-muted);
+      opacity: 0.5;
+    }
+
+    /* Video placeholder */
+    .media-type-badge {
+      position: absolute;
+      top: var(--sp-3);
+      left: var(--sp-3);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--c-accent);
+      color: #fff;
+      padding: var(--sp-1) var(--sp-2);
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+  <a href="#timeline" class="skip-link">Skip to timeline</a>
+
+  <!-- Site Header -->
+  <header class="site-header" role="banner">
+    <a href="/" class="site-header__logo" aria-label="Portfolio home">
+      <span class="site-header__logo-dot" aria-hidden="true"></span>
+      <span>Portfolio</span>
+    </a>
+
+    <div class="site-header__controls">
+      <span class="timeline-progress mono" id="progressLabel" aria-live="polite" aria-atomic="true">01 / 01</span>
+
+      <button class="btn-icon" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark/light mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+
+      <button class="btn-icon" id="openBtn" aria-label="Open current entry detail" title="Open entry">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Timeline -->
+  <main id="timeline" class="timeline-wrapper" role="main">
+    <div class="timeline-scroll-track" id="scrollTrack">
+      <div class="timeline-sticky">
+        <div class="timeline-axis" aria-hidden="true"></div>
+        <div class="timeline-strip" id="timelineStrip" role="list" aria-label="Portfolio timeline entries">
+          <!-- Panels injected by JS -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Nav dots -->
+  <nav class="timeline-nav-dots" id="navDots" aria-label="Timeline navigation"></nav>
+
+  <!-- Keyboard hint -->
+  <p class="kbd-hint" aria-hidden="true">
+    <kbd>←</kbd><kbd>→</kbd> navigate &nbsp;
+    <kbd>Enter</kbd> open &nbsp;
+    <kbd>Esc</kbd> close
+  </p>
+
+  <!-- Lightbox / Detail view -->
+  <div
+    class="lightbox"
+    id="lightbox"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="lightboxTitle"
+    aria-hidden="true"
+    tabindex="-1"
+  >
+    <div class="lightbox__header">
+      <div class="lightbox__meta">
+        <span class="lightbox__year" id="lightboxYear"></span>
+        <h1 class="lightbox__title" id="lightboxTitle"></h1>
+      </div>
+      <button class="lightbox__close" id="lightboxClose" aria-label="Close detail view">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="lightbox__body">
+      <div class="lightbox__media-col">
+        <div class="lightbox__media-main" id="lightboxMain"></div>
+        <div class="lightbox__media-grid" id="lightboxGrid" role="list" aria-label="Media gallery"></div>
+      </div>
+
+      <div class="lightbox__info-col">
+        <p class="lightbox__role" id="lightboxRole"></p>
+        <p class="lightbox__description" id="lightboxDesc"></p>
+
+        <div class="lightbox__facts" id="lightboxFacts">
+          <!-- Fact rows injected by JS -->
+        </div>
+
+        <div class="lightbox__tags" id="lightboxTags"></div>
+
+        <nav class="lightbox__nav" aria-label="Entry navigation">
+          <button class="lightbox__nav-btn" id="lightboxPrev" aria-label="Previous entry">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            Prev
+          </button>
+          <button class="lightbox__nav-btn" id="lightboxNext" aria-label="Next entry">
+            Next
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll hint (visible until first scroll) -->
+  <div class="scroll-hint" id="scrollHint" aria-hidden="true">
+    <span class="scroll-hint__text">Scroll</span>
+    <span class="scroll-hint__line"></span>
+  </div>
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <script type="module">
+    // ── Data ──
+    const TIMELINE_DATA_KEY = 'portfolio_timeline_v1';
+
+    const DEFAULT_ENTRIES = [
+      {
+        id: 'entry-001',
+        year: '2004',
+        title: 'Foundation Years',
+        role: 'Junior Designer',
+        description: 'Where it began. First studio role, learning the craft end-to-end — from paste-up grids to early digital workflows. The discipline of print thinking never left.',
+        who: 'Slammin Design Studio',
+        what: 'Brand identity, print production',
+        where: 'London, UK',
+        why: 'Building the fundamentals that every later project would draw on.',
+        tags: ['Brand', 'Print', 'Identity'],
+        media: [
+          { type: 'image', url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200', alt: 'Early design work at studio desk', caption: 'Studio work, 2004' }
+        ]
+      },
+      {
+        id: 'entry-002',
+        year: '2007',
+        title: 'Digital Pivot',
+        role: 'Interactive Designer',
+        description: 'The web changed everything. Moved from print into interactive design — Flash, then early CSS — while keeping the typographic rigour from print years.',
+        who: 'Independent & Agency clients',
+        what: 'Web design, interactive media',
+        where: 'London, UK',
+        why: 'Seeing the web as the next editorial canvas, not a lesser medium.',
+        tags: ['Web', 'Interactive', 'Typography'],
+        media: [
+          { type: 'image', url: 'https://images.unsplash.com/photo-1547658719-da2b51169166?w=1200', alt: 'Digital design workspace', caption: 'First digital projects' },
+          { type: 'image', url: 'https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=1200', alt: 'Web design layouts', caption: 'Early web work' }
+        ]
+      },
+      {
+        id: 'entry-003',
+        year: '2012',
+        title: 'Full Stack Turn',
+        role: 'Designer & Developer',
+        description: 'Crossed into code properly. Backend logic, databases, deployment. The ability to build what you design, end-to-end, changed the scope of what was possible.',
+        who: 'Slammin Design (independent)',
+        what: 'Full stack web development',
+        where: 'London, UK',
+        why: 'No more handover gaps. Total ownership from brief to live.',
+        tags: ['Development', 'Full Stack', 'Independent'],
+        media: [
+          { type: 'image', url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200', alt: 'Code on screen', caption: 'Learning to build, 2012' }
+        ]
+      },
+      {
+        id: 'entry-004',
+        year: '2018',
+        title: 'Motion & Brand Systems',
+        role: 'Motion Designer / Brand Lead',
+        description: 'Added motion to the toolkit. GSAP, After Effects, brand systems that move — identities that work across static, screen, and time.',
+        who: 'Multiple brand clients',
+        what: 'Motion design, brand systems, animation',
+        where: 'London, UK',
+        why: 'Static brands felt incomplete. Everything lives on screen now, and screens move.',
+        tags: ['Motion', 'Brand Systems', 'Animation'],
+        media: [
+          { type: 'image', url: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=1200', alt: 'Motion design frames', caption: 'Brand motion work, 2018' }
+        ]
+      },
+      {
+        id: 'entry-005',
+        year: '2023',
+        title: 'Edge & AI Integration',
+        role: 'Designer / Developer / Product',
+        description: 'Cloudflare Workers, Pages, KV, R2. Building serverless products at the edge. Integrating AI into real workflows without losing the design instinct that makes output worth having.',
+        who: 'Slammin Design (independent)',
+        what: 'Edge computing, AI-powered products, ecommerce',
+        where: 'London, UK — global deployment',
+        why: 'The platform shifted again. Getting ahead of it this time.',
+        tags: ['Cloudflare', 'AI', 'Edge', 'Product'],
+        media: [
+          { type: 'image', url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200', alt: 'Edge computing infrastructure', caption: 'Solostore platform, 2023' }
+        ]
+      }
+    ];
+
+    function getEntries() {
+      try {
+        const stored = localStorage.getItem(TIMELINE_DATA_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      return DEFAULT_ENTRIES;
+    }
+
+    // ── State ──
+    const entries = getEntries();
+    let activeIndex = 0;
+    let lightboxOpen = false;
+    let lightboxMediaIndex = 0;
+    let prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ── DOM refs ──
+    const strip = document.getElementById('timelineStrip');
+    const scrollTrack = document.getElementById('scrollTrack');
+    const navDotsEl = document.getElementById('navDots');
+    const progressLabel = document.getElementById('progressLabel');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxClose = document.getElementById('lightboxClose');
+    const lightboxPrev = document.getElementById('lightboxPrev');
+    const lightboxNext = document.getElementById('lightboxNext');
+    const scrollHint = document.getElementById('scrollHint');
+    const openBtn = document.getElementById('openBtn');
+    const themeToggle = document.getElementById('themeToggle');
+
+    // ── Theme ──
+    const savedTheme = localStorage.getItem('portfolio_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('portfolio_theme', next);
+    });
+
+    // ── Build panels ──
+    function buildMediaEl(item, isMain = false) {
+      const wrap = document.createElement('div');
+      wrap.style.position = 'relative';
+      wrap.style.width = '100%';
+      wrap.style.height = '100%';
+
+      if (item.type === 'image') {
+        const img = document.createElement('img');
+        img.src = item.url;
+        img.alt = item.alt || '';
+        img.loading = 'lazy';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.display = 'block';
+        wrap.appendChild(img);
+      } else if (item.type === 'youtube') {
+        const badge = document.createElement('span');
+        badge.className = 'media-type-badge';
+        badge.textContent = 'Video';
+        badge.setAttribute('aria-hidden', 'true');
+        const id = item.url.match(/(?:v=|youtu\.be\/)([^&\s]+)/)?.[1];
+        if (isMain && id) {
+          const iframe = document.createElement('iframe');
+          iframe.src = `https://www.youtube-nocookie.com/embed/${id}`;
+          iframe.title = item.alt || 'YouTube video';
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+          iframe.setAttribute('allowfullscreen', '');
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.border = 'none';
+          wrap.appendChild(iframe);
+        } else {
+          const img = document.createElement('img');
+          const vid = item.url.match(/(?:v=|youtu\.be\/)([^&\s]+)/)?.[1];
+          img.src = vid ? `https://img.youtube.com/vi/${vid}/mqdefault.jpg` : '';
+          img.alt = item.alt || 'Video thumbnail';
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+          wrap.appendChild(img);
+          wrap.appendChild(badge);
+        }
+      } else if (item.type === 'vimeo') {
+        const badge = document.createElement('span');
+        badge.className = 'media-type-badge';
+        badge.textContent = 'Video';
+        badge.setAttribute('aria-hidden', 'true');
+        const id = item.url.match(/vimeo\.com\/(\d+)/)?.[1];
+        if (isMain && id) {
+          const iframe = document.createElement('iframe');
+          iframe.src = `https://player.vimeo.com/video/${id}`;
+          iframe.title = item.alt || 'Vimeo video';
+          iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+          iframe.setAttribute('allowfullscreen', '');
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.border = 'none';
+          wrap.appendChild(iframe);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.style.cssText = 'width:100%;height:100%;background:var(--c-bg-alt);display:flex;align-items:center;justify-content:center;';
+          placeholder.setAttribute('aria-label', item.alt || 'Vimeo video');
+          wrap.appendChild(placeholder);
+          wrap.appendChild(badge);
+        }
+      } else if (item.type === 'video') {
+        const badge = document.createElement('span');
+        badge.className = 'media-type-badge';
+        badge.textContent = 'Video';
+        badge.setAttribute('aria-hidden', 'true');
+        const video = document.createElement('video');
+        video.src = item.url;
+        video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        video.setAttribute('controls', '');
+        video.setAttribute('preload', 'none');
+        if (item.alt) video.setAttribute('aria-label', item.alt);
+        wrap.appendChild(video);
+        wrap.appendChild(badge);
+      }
+
+      return wrap;
+    }
+
+    function renderPanels() {
+      strip.innerHTML = '';
+      navDotsEl.innerHTML = '';
+
+      // Intro panel
+      const intro = document.createElement('div');
+      intro.className = 'intro-panel';
+      intro.setAttribute('aria-hidden', 'true');
+      intro.innerHTML = `
+        <p class="intro-panel__eyebrow">MrOuch - Work &amp; Practice</p>
+        <h1 class="intro-panel__heading">Just<br>A Bunch<br><em>of Stuff</em></h1>
+        <p class="intro-panel__sub">A visual record of skills, projects and milestones — scroll to begin.</p>
+        <span class="intro-panel__cta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Scroll to navigate
+        </span>
+        <div class="scroll-hint" aria-hidden="true">
+          <span class="scroll-hint__text">Scroll</span>
+          <span class="scroll-hint__line"></span>
+        </div>
+      `;
+      strip.appendChild(intro);
+
+      entries.forEach((entry, i) => {
+        // Panel
+        const panel = document.createElement('div');
+        panel.className = 'timeline-panel';
+        panel.setAttribute('role', 'listitem');
+        panel.setAttribute('aria-label', `${entry.year}: ${entry.title}`);
+        panel.setAttribute('tabindex', i === 0 ? '0' : '-1');
+        panel.dataset.index = i;
+        if (i === 0) panel.classList.add('is-active');
+
+        const firstMedia = entry.media?.[0];
+        const mediaCount = entry.media?.length || 0;
+
+        panel.innerHTML = `
+          <div class="panel-upper">
+            <div class="panel-media-thumb" aria-hidden="true">
+              ${firstMedia ? '' : ''}
+            </div>
+          </div>
+
+          <div class="panel-year">
+            <button class="panel-year__dot" aria-label="Go to ${entry.year}: ${entry.title}" tabindex="-1"></button>
+            <span class="panel-year__label mono">${entry.year}</span>
+          </div>
+
+          <div class="panel-lower">
+            <div class="panel-title-block">
+              <p class="panel-title-block__role">${entry.role}</p>
+              <h2 class="panel-title-block__title">${entry.title}</h2>
+              <div class="panel-title-block__tags" aria-label="Tags">
+                ${(entry.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <span class="panel-index mono" aria-hidden="true">${String(i + 1).padStart(2, '0')} / ${String(entries.length).padStart(2, '0')}</span>
+        `;
+
+        // Build thumb media
+        if (firstMedia) {
+          const thumb = panel.querySelector('.panel-media-thumb');
+          thumb.appendChild(buildMediaEl(firstMedia, false));
+          if (mediaCount > 1) {
+            const countBadge = document.createElement('span');
+            countBadge.className = 'panel-media-thumb__count';
+            countBadge.setAttribute('aria-hidden', 'true');
+            countBadge.textContent = `+${mediaCount - 1}`;
+            thumb.appendChild(countBadge);
+          }
+        }
+
+        // Click to open lightbox
+        panel.addEventListener('click', () => {
+          setActive(i);
+          openLightbox(i);
+        });
+        panel.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openLightbox(i);
+          }
+        });
+
+        strip.appendChild(panel);
+
+        // Nav dot
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' is-active' : '');
+        dot.setAttribute('aria-label', `Go to ${entry.year}: ${entry.title}`);
+        dot.dataset.index = i;
+        dot.addEventListener('click', () => {
+          scrollToIndex(i);
+        });
+        navDotsEl.appendChild(dot);
+      });
+    }
+
+    renderPanels();
+
+    // ── GSAP ScrollTrigger ──
+    gsap.registerPlugin(ScrollTrigger);
+
+    const panels = () => document.querySelectorAll('.timeline-panel');
+    const dots = () => document.querySelectorAll('.nav-dot');
+
+    // Set scroll track height: enough to scroll through all entries
+    const totalEntries = entries.length + 1; // +1 for intro
+    scrollTrack.style.height = `${totalEntries * 100}vh`;
+
+    // Horizontal scroll
+    const totalWidth = () => strip.scrollWidth - window.innerWidth;
+
+    function initScrollTrigger() {
+      ScrollTrigger.getAll().forEach(t => t.kill());
+
+      gsap.to(strip, {
+        x: () => -totalWidth(),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: scrollTrack,
+          start: 'top top',
+          end: () => `+=${scrollTrack.offsetHeight - window.innerHeight}`,
+          scrub: prefersReducedMotion ? 0 : 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            // Determine active panel from progress
+            const progress = self.progress;
+            const panelEls = panels();
+            const idx = Math.round(progress * (entries.length - 1 + 0.5));
+            const clampedIdx = Math.max(0, Math.min(entries.length - 1, Math.floor(progress * entries.length)));
+
+            if (clampedIdx !== activeIndex && !lightboxOpen) {
+              setActive(clampedIdx);
+            }
+
+            // Hide scroll hint after first movement
+            if (progress > 0.01) {
+              gsap.to(scrollHint, { opacity: 0, duration: 0.3 });
+            }
+          }
+        }
+      });
+    }
+
+    initScrollTrigger();
+    window.addEventListener('resize', () => {
+      scrollTrack.style.height = `${totalEntries * 100}vh`;
+      ScrollTrigger.refresh();
+    });
+
+    // ── Active state ──
+    function setActive(idx) {
+      if (idx < 0 || idx >= entries.length) return;
+      activeIndex = idx;
+
+      panels().forEach((p, i) => {
+        p.classList.toggle('is-active', i === idx);
+        p.setAttribute('tabindex', i === idx ? '0' : '-1');
+      });
+
+      dots().forEach((d, i) => {
+        d.classList.toggle('is-active', i === idx);
+      });
+
+      progressLabel.textContent = `${String(idx + 1).padStart(2, '0')} / ${String(entries.length).padStart(2, '0')}`;
+    }
+
+    // ── Scroll to index ──
+    function scrollToIndex(idx) {
+      const progress = idx / (entries.length - 1);
+      const trackHeight = scrollTrack.offsetHeight - window.innerHeight;
+      const headerOffset = document.querySelector('.site-header').offsetHeight;
+      const targetY = progress * trackHeight + headerOffset;
+
+      if (prefersReducedMotion) {
+        window.scrollTo(0, targetY);
+      } else {
+        gsap.to(window, {
+          scrollTo: targetY,
+          duration: 0.8,
+          ease: 'expo.inOut'
+        });
+      }
+    }
+
+    // ── Lightbox ──
+    function openLightbox(idx) {
+      const entry = entries[idx];
+      if (!entry) return;
+      lightboxOpen = true;
+      lightboxMediaIndex = 0;
+
+      document.getElementById('lightboxYear').textContent = entry.year;
+      document.getElementById('lightboxTitle').textContent = entry.title;
+      document.getElementById('lightboxRole').textContent = entry.role || '';
+      document.getElementById('lightboxDesc').textContent = entry.description || '';
+
+      // Facts
+      const factsEl = document.getElementById('lightboxFacts');
+      const facts = [
+        { label: 'Who', value: entry.who },
+        { label: 'What', value: entry.what },
+        { label: 'Where', value: entry.where },
+        { label: 'Why', value: entry.why }
+      ].filter(f => f.value);
+
+      factsEl.innerHTML = facts.map(f => `
+        <div class="fact-row">
+          <span class="fact-row__label">${f.label}</span>
+          <span class="fact-row__value">${f.value}</span>
+        </div>
+      `).join('');
+
+      // Tags
+      const tagsEl = document.getElementById('lightboxTags');
+      tagsEl.innerHTML = (entry.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+
+      // Media
+      renderLightboxMedia(entry, 0);
+
+      // Nav buttons
+      lightboxPrev.disabled = idx === 0;
+      lightboxNext.disabled = idx === entries.length - 1;
+
+      lightbox.classList.add('is-open');
+      lightbox.setAttribute('aria-hidden', 'false');
+
+      if (!prefersReducedMotion) {
+        gsap.fromTo(lightbox,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.4, ease: 'expo.out' }
+        );
+      } else {
+        lightbox.style.opacity = 1;
+      }
+
+      lightboxClose.focus();
+    }
+
+    function renderLightboxMedia(entry, mediaIdx) {
+      const main = document.getElementById('lightboxMain');
+      const grid = document.getElementById('lightboxGrid');
+      main.innerHTML = '';
+      grid.innerHTML = '';
+
+      const media = entry.media || [];
+      if (!media.length) return;
+
+      // Main
+      main.appendChild(buildMediaEl(media[mediaIdx], true));
+
+      // Grid thumbnails (if >1)
+      if (media.length > 1) {
+        media.forEach((item, i) => {
+          const thumb = document.createElement('div');
+          thumb.className = 'lightbox__media-thumb' + (i === mediaIdx ? ' is-active' : '');
+          thumb.setAttribute('role', 'listitem');
+          thumb.setAttribute('aria-label', item.alt || `Media ${i + 1}`);
+          thumb.setAttribute('tabindex', '0');
+          thumb.appendChild(buildMediaEl(item, false));
+          thumb.addEventListener('click', () => {
+            lightboxMediaIndex = i;
+            renderLightboxMedia(entry, i);
+          });
+          thumb.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              lightboxMediaIndex = i;
+              renderLightboxMedia(entry, i);
+            }
+          });
+          grid.appendChild(thumb);
+        });
+      }
+    }
+
+    function closeLightbox() {
+      lightboxOpen = false;
+      if (!prefersReducedMotion) {
+        gsap.to(lightbox, { opacity: 0, y: 10, duration: 0.25, ease: 'expo.in', onComplete: () => {
+          lightbox.classList.remove('is-open');
+          lightbox.setAttribute('aria-hidden', 'true');
+          lightbox.scrollTop = 0;
+        }});
+      } else {
+        lightbox.classList.remove('is-open');
+        lightbox.setAttribute('aria-hidden', 'true');
+      }
+      panels()[activeIndex]?.focus();
+    }
+
+    lightboxClose.addEventListener('click', closeLightbox);
+    openBtn.addEventListener('click', () => openLightbox(activeIndex));
+
+    lightboxPrev.addEventListener('click', () => {
+      if (activeIndex > 0) {
+        const newIdx = activeIndex - 1;
+        setActive(newIdx);
+        openLightbox(newIdx);
+      }
+    });
+
+    lightboxNext.addEventListener('click', () => {
+      if (activeIndex < entries.length - 1) {
+        const newIdx = activeIndex + 1;
+        setActive(newIdx);
+        openLightbox(newIdx);
+      }
+    });
+
+    // ── Keyboard navigation ──
+    document.addEventListener('keydown', e => {
+      if (lightboxOpen) {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') lightboxPrev.click();
+        if (e.key === 'ArrowRight') lightboxNext.click();
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (activeIndex < entries.length - 1) scrollToIndex(activeIndex + 1);
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (activeIndex > 0) scrollToIndex(activeIndex - 1);
+      }
+      if (e.key === 'Enter' && !lightboxOpen) {
+        openLightbox(activeIndex);
+      }
+    });
+
+    // ── Trap focus in lightbox ──
+    lightbox.addEventListener('keydown', e => {
+      if (e.key !== 'Tab') return;
+      const focusable = lightbox.querySelectorAll('button:not([disabled]), [tabindex="0"], a[href], input, select, textarea');
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+
+    // ── Initial active ──
+    setActive(0);
+  </script>
+</body>
+</html>

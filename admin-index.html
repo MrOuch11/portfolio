@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Timeline Admin — Editor</title>
+  <link rel="stylesheet" href="../assets/css/mod-shared.css">
+  <style>
+    /* ── Admin layout ── */
+    body { min-height: 100vh; }
+
+    .admin-wrapper {
+      padding-top: var(--header-h);
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar: entry list ── */
+    .admin-sidebar {
+      border-right: 1px solid var(--c-rule);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - var(--header-h));
+      position: sticky;
+      top: var(--header-h);
+      overflow: hidden;
+    }
+
+    .admin-sidebar__header {
+      padding: var(--sp-4) var(--sp-6);
+      border-bottom: 1px solid var(--c-rule);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .admin-sidebar__title {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-text-muted);
+    }
+
+    .admin-sidebar__list {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--sp-3) 0;
+    }
+
+    .entry-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-6);
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background var(--dur-fast), border-color var(--dur-fast);
+      user-select: none;
+    }
+
+    .entry-item:hover { background: var(--c-bg-alt); }
+
+    .entry-item.is-active {
+      border-left-color: var(--c-accent);
+      background: var(--c-accent-dim);
+    }
+
+    .entry-item__drag {
+      color: var(--c-rule);
+      cursor: grab;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
+    .entry-item__drag:active { cursor: grabbing; }
+
+    .entry-item__info { flex: 1; min-width: 0; }
+
+    .entry-item__year {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      color: var(--c-accent);
+      letter-spacing: 0.08em;
+    }
+
+    .entry-item__title {
+      font-size: var(--fs-sm);
+      color: var(--c-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .entry-item__del {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      background: none;
+      border: none;
+      color: var(--c-text-muted);
+      cursor: pointer;
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity var(--dur-fast), color var(--dur-fast), background var(--dur-fast);
+    }
+    .entry-item:hover .entry-item__del { opacity: 1; }
+    .entry-item__del:hover { color: var(--c-accent); background: var(--c-accent-dim); }
+
+    /* ── Main editor area ── */
+    .admin-main {
+      padding: var(--sp-8) var(--sp-12);
+      overflow-y: auto;
+    }
+
+    .editor-form {
+      max-width: 740px;
+    }
+
+    .editor-form__heading {
+      font-family: var(--f-display);
+      font-size: var(--fs-2xl);
+      font-weight: 700;
+      color: var(--c-text);
+      margin-bottom: var(--sp-8);
+      line-height: 1.05;
+    }
+
+    /* Field groups */
+    .field-group {
+      margin-bottom: var(--sp-6);
+    }
+
+    .field-group--row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+
+    .field-label {
+      display: block;
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-text-muted);
+      margin-bottom: var(--sp-2);
+    }
+
+    .field-label span {
+      color: var(--c-accent);
+      margin-left: 2px;
+    }
+
+    .field-input,
+    .field-textarea {
+      width: 100%;
+      background: var(--c-bg-alt);
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      color: var(--c-text);
+      font-family: var(--f-body);
+      font-size: var(--fs-base);
+      padding: var(--sp-3) var(--sp-4);
+      transition: border-color var(--dur-fast), background var(--dur-fast);
+      appearance: none;
+    }
+
+    .field-input:focus,
+    .field-textarea:focus {
+      outline: none;
+      border-color: var(--c-accent);
+      background: var(--c-surface);
+    }
+
+    .field-textarea {
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.6;
+    }
+
+    .field-hint {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      color: var(--c-text-muted);
+      margin-top: var(--sp-2);
+      display: block;
+    }
+
+    /* Section divider */
+    .editor-section {
+      margin: var(--sp-8) 0 var(--sp-6);
+      padding-top: var(--sp-6);
+      border-top: 1px solid var(--c-rule);
+    }
+
+    .editor-section__title {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--c-text-muted);
+      margin-bottom: var(--sp-4);
+    }
+
+    /* Tags input */
+    .tags-input-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+      align-items: center;
+      background: var(--c-bg-alt);
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      padding: var(--sp-2) var(--sp-3);
+      min-height: 44px;
+    }
+
+    .tags-input-wrap:focus-within {
+      border-color: var(--c-accent);
+      background: var(--c-surface);
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: var(--sp-1) var(--sp-2);
+      background: var(--c-surface);
+      border: 1px solid var(--c-rule);
+      border-radius: 1px;
+      color: var(--c-text);
+    }
+
+    .tag-chip__remove {
+      background: none;
+      border: none;
+      color: var(--c-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1;
+    }
+    .tag-chip__remove:hover { color: var(--c-accent); }
+
+    .tags-text-input {
+      background: none;
+      border: none;
+      outline: none;
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      color: var(--c-text);
+      letter-spacing: 0.06em;
+      flex: 1;
+      min-width: 80px;
+    }
+
+    /* Media entries */
+    .media-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-4);
+    }
+
+    .media-entry {
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .media-entry__header {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--c-bg-alt);
+      border-bottom: 1px solid var(--c-rule);
+    }
+
+    .media-entry__num {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      color: var(--c-text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .media-entry__type-select {
+      flex: 1;
+      background: var(--c-surface);
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      color: var(--c-text);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.06em;
+      padding: var(--sp-1) var(--sp-2);
+    }
+
+    .media-entry__body {
+      padding: var(--sp-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+
+    .media-entry__remove {
+      background: none;
+      border: none;
+      color: var(--c-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: var(--sp-1);
+      transition: color var(--dur-fast);
+    }
+    .media-entry__remove:hover { color: var(--c-accent); }
+
+    .media-preview {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      border-radius: 2px;
+      display: block;
+      background: var(--c-bg-alt);
+      margin-top: var(--sp-2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: var(--sp-3) var(--sp-6);
+      border-radius: 2px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), opacity var(--dur-fast);
+    }
+
+    .btn--primary {
+      background: var(--c-text);
+      color: var(--c-bg);
+    }
+    .btn--primary:hover { opacity: 0.85; }
+
+    .btn--ghost {
+      background: none;
+      border-color: var(--c-rule);
+      color: var(--c-text);
+    }
+    .btn--ghost:hover { border-color: var(--c-text); background: var(--c-bg-alt); }
+
+    .btn--danger {
+      background: none;
+      border-color: var(--c-rule);
+      color: var(--c-accent);
+    }
+    .btn--danger:hover { background: var(--c-accent-dim); border-color: var(--c-accent); }
+
+    .btn--accent {
+      background: var(--c-accent);
+      color: #fff;
+    }
+    .btn--accent:hover { opacity: 0.88; }
+
+    .btn--sm {
+      padding: var(--sp-2) var(--sp-4);
+    }
+
+    /* Form actions bar */
+    .form-actions {
+      position: sticky;
+      bottom: 0;
+      background: var(--c-bg);
+      border-top: 1px solid var(--c-rule);
+      padding: var(--sp-4) 0;
+      margin-top: var(--sp-8);
+      display: flex;
+      gap: var(--sp-3);
+      align-items: center;
+    }
+
+    .save-status {
+      font-family: var(--f-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.08em;
+      color: var(--c-text-muted);
+      margin-left: auto;
+    }
+    .save-status.is-saved { color: #22a05b; }
+    .save-status.is-error { color: var(--c-accent); }
+
+    /* Header actions */
+    .admin-header-actions {
+      display: flex;
+      gap: var(--sp-3);
+      align-items: center;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: var(--sp-4);
+      color: var(--c-text-muted);
+      text-align: center;
+      padding: var(--sp-12);
+    }
+
+    .empty-state__icon {
+      width: 48px; height: 48px;
+      opacity: 0.3;
+    }
+
+    .empty-state__text {
+      font-family: var(--f-mono);
+      font-size: var(--fs-sm);
+      letter-spacing: 0.06em;
+    }
+
+    /* Import modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur-med);
+    }
+    .modal-overlay.is-open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--c-surface);
+      border: 1px solid var(--c-rule);
+      border-radius: 2px;
+      padding: var(--sp-8);
+      width: min(500px, 90vw);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+
+    .modal__title {
+      font-family: var(--f-display);
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      color: var(--c-text);
+    }
+
+    .modal__actions {
+      display: flex;
+      gap: var(--sp-3);
+      justify-content: flex-end;
+    }
+
+    /* Drag over state */
+    .entry-item.drag-over {
+      border-top: 2px solid var(--c-accent);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .admin-wrapper {
+        grid-template-columns: 1fr;
+      }
+      .admin-sidebar {
+        height: auto;
+        position: relative;
+        top: 0;
+        max-height: 300px;
+      }
+      .admin-main { padding: var(--sp-6); }
+      .field-group--row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header" role="banner">
+    <a href="/" class="site-header__logo" aria-label="View public timeline">
+      <span class="site-header__logo-dot" aria-hidden="true"></span>
+      <span>Timeline Admin</span>
+    </a>
+
+    <div class="admin-header-actions">
+      <button class="btn btn--ghost btn--sm" id="importBtn" aria-label="Import JSON data">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Import
+      </button>
+      <button class="btn btn--ghost btn--sm" id="exportBtn" aria-label="Export JSON data">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Export JSON
+      </button>
+      <a href="/" class="btn btn--accent btn--sm" target="_blank" rel="noopener">
+        View Timeline
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+      </a>
+      <button class="btn-icon" id="themeToggle" aria-label="Toggle dark mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="admin-wrapper">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" aria-label="Timeline entries">
+      <div class="admin-sidebar__header">
+        <span class="admin-sidebar__title">Entries (<span id="entryCount">0</span>)</span>
+        <button class="btn btn--accent btn--sm" id="addEntryBtn" aria-label="Add new entry">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Add
+        </button>
+      </div>
+      <div class="admin-sidebar__list" id="entriesList" role="list" aria-label="Timeline entries list">
+        <!-- Rendered by JS -->
+      </div>
+    </aside>
+
+    <!-- Editor -->
+    <main class="admin-main" id="adminMain" aria-label="Entry editor">
+      <div class="empty-state" id="emptyState">
+        <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p class="empty-state__text">Select an entry to edit<br>or add a new one</p>
+      </div>
+
+      <form class="editor-form" id="editorForm" style="display:none;" novalidate aria-label="Edit timeline entry">
+        <h1 class="editor-form__heading" id="formHeading">New Entry</h1>
+
+        <!-- Core fields -->
+        <div class="field-group--row">
+          <div class="field-group">
+            <label class="field-label" for="fieldYear">Year <span aria-hidden="true">*</span></label>
+            <input class="field-input" type="text" id="fieldYear" name="year" required placeholder="2024" maxlength="9" aria-required="true">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="fieldRole">Role / Position <span aria-hidden="true">*</span></label>
+            <input class="field-input" type="text" id="fieldRole" name="role" required placeholder="Senior Designer" aria-required="true">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="fieldTitle">Title <span aria-hidden="true">*</span></label>
+          <input class="field-input" type="text" id="fieldTitle" name="title" required placeholder="Project or milestone name" aria-required="true">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="fieldDesc">Description</label>
+          <textarea class="field-textarea" id="fieldDesc" name="description" placeholder="A few sentences about this milestone — what made it significant." rows="4"></textarea>
+        </div>
+
+        <!-- Context fields -->
+        <div class="editor-section">
+          <p class="editor-section__title">Context — Who / What / Where / Why</p>
+
+          <div class="field-group--row">
+            <div class="field-group">
+              <label class="field-label" for="fieldWho">Who</label>
+              <input class="field-input" type="text" id="fieldWho" name="who" placeholder="Client or organisation">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="fieldWhat">What</label>
+              <input class="field-input" type="text" id="fieldWhat" name="what" placeholder="Type of work">
+            </div>
+          </div>
+
+          <div class="field-group--row">
+            <div class="field-group">
+              <label class="field-label" for="fieldWhere">Where</label>
+              <input class="field-input" type="text" id="fieldWhere" name="where" placeholder="Location">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="fieldWhy">Why</label>
+              <input class="field-input" type="text" id="fieldWhy" name="why" placeholder="The reason it mattered">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tags -->
+        <div class="field-group">
+          <label class="field-label" for="tagInput">Tags</label>
+          <div class="tags-input-wrap" id="tagsWrap" role="group" aria-label="Tags">
+            <input
+              class="tags-text-input"
+              type="text"
+              id="tagInput"
+              placeholder="Type tag, press Enter or comma"
+              aria-label="Add tag — press Enter or comma to confirm"
+            >
+          </div>
+          <span class="field-hint">Press Enter or comma to add. Click × to remove.</span>
+        </div>
+
+        <!-- Media -->
+        <div class="editor-section">
+          <p class="editor-section__title">Media — Images &amp; Videos</p>
+          <span class="field-hint" style="margin-bottom: var(--sp-4); display:block;">Paste Cloudinary URLs directly. Supports image, YouTube, Vimeo, or direct video URL. Up to 6 items per entry.</span>
+
+          <div class="media-list" id="mediaList" role="list" aria-label="Media items"></div>
+
+          <button type="button" class="btn btn--ghost btn--sm" id="addMediaBtn" aria-label="Add media item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Add media item
+          </button>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary" form="editorForm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Entry
+          </button>
+          <button type="button" class="btn btn--danger btn--sm" id="deleteEntryBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+            Delete Entry
+          </button>
+          <span class="save-status" id="saveStatus" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <!-- Import modal -->
+  <div class="modal-overlay" id="importModal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle" aria-hidden="true">
+    <div class="modal">
+      <h2 class="modal__title" id="importModalTitle">Import JSON</h2>
+      <p style="font-size:var(--fs-sm); color:var(--c-text-muted); line-height:1.6;">Paste exported JSON or load from a file. This will replace all current entries.</p>
+      <textarea class="field-textarea" id="importJson" rows="8" placeholder='[{"id":"entry-001","year":"2024",...}]' aria-label="JSON data to import" style="font-family: var(--f-mono); font-size: var(--fs-xs);"></textarea>
+      <input type="file" id="importFile" accept=".json" style="display:none;" aria-label="Load JSON file">
+      <div class="modal__actions">
+        <button class="btn btn--ghost btn--sm" id="importFileBtn">Load File</button>
+        <button class="btn btn--ghost btn--sm" id="importCancelBtn">Cancel</button>
+        <button class="btn btn--accent btn--sm" id="importConfirmBtn">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Constants ──
+    const TIMELINE_DATA_KEY = 'portfolio_timeline_v1';
+
+    const DEFAULT_ENTRIES = [
+      { id:'entry-001', year:'2004', title:'Foundation Years', role:'Junior Designer', description:'Where it began. First studio role, learning the craft end-to-end — from paste-up grids to early digital workflows. The discipline of print thinking never left.', who:'Slammin Design Studio', what:'Brand identity, print production', where:'London, UK', why:'Building the fundamentals that every later project would draw on.', tags:['Brand','Print','Identity'], media:[{type:'image',url:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200',alt:'Early design work at studio desk',caption:'Studio work, 2004'}] },
+      { id:'entry-002', year:'2007', title:'Digital Pivot', role:'Interactive Designer', description:'The web changed everything. Moved from print into interactive design — Flash, then early CSS — while keeping the typographic rigour from print years.', who:'Independent & Agency clients', what:'Web design, interactive media', where:'London, UK', why:'Seeing the web as the next editorial canvas, not a lesser medium.', tags:['Web','Interactive','Typography'], media:[{type:'image',url:'https://images.unsplash.com/photo-1547658719-da2b51169166?w=1200',alt:'Digital design workspace',caption:'First digital projects'},{type:'image',url:'https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=1200',alt:'Web design layouts',caption:'Early web work'}] },
+      { id:'entry-003', year:'2012', title:'Full Stack Turn', role:'Designer & Developer', description:'Crossed into code properly. Backend logic, databases, deployment. The ability to build what you design, end-to-end, changed the scope of what was possible.', who:'Slammin Design (independent)', what:'Full stack web development', where:'London, UK', why:'No more handover gaps. Total ownership from brief to live.', tags:['Development','Full Stack','Independent'], media:[{type:'image',url:'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200',alt:'Code on screen',caption:'Learning to build, 2012'}] },
+      { id:'entry-004', year:'2018', title:'Motion & Brand Systems', role:'Motion Designer / Brand Lead', description:'Added motion to the toolkit. GSAP, After Effects, brand systems that move — identities that work across static, screen, and time.', who:'Multiple brand clients', what:'Motion design, brand systems, animation', where:'London, UK', why:'Static brands felt incomplete. Everything lives on screen now, and screens move.', tags:['Motion','Brand Systems','Animation'], media:[{type:'image',url:'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=1200',alt:'Motion design frames',caption:'Brand motion work, 2018'}] },
+      { id:'entry-005', year:'2023', title:'Edge & AI Integration', role:'Designer / Developer / Product', description:'Cloudflare Workers, Pages, KV, R2. Building serverless products at the edge. Integrating AI into real workflows without losing the design instinct that makes output worth having.', who:'Slammin Design (independent)', what:'Edge computing, AI-powered products, ecommerce', where:'London, UK — global deployment', why:'The platform shifted again. Getting ahead of it this time.', tags:['Cloudflare','AI','Edge','Product'], media:[{type:'image',url:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200',alt:'Edge computing infrastructure',caption:'Solostore platform, 2023'}] }
+    ];
+
+    function loadEntries() {
+      try {
+        const s = localStorage.getItem(TIMELINE_DATA_KEY);
+        if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length) return p; }
+      } catch(e){}
+      return JSON.parse(JSON.stringify(DEFAULT_ENTRIES));
+    }
+
+    function saveEntries(entries) {
+      try { localStorage.setItem(TIMELINE_DATA_KEY, JSON.stringify(entries)); return true; }
+      catch(e) { return false; }
+    }
+
+    function uid() { return 'entry-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+    // ── State ──
+    let entries = loadEntries();
+    let activeId = null;
+    let currentTags = [];
+    let currentMedia = [];
+    let dragSrcId = null;
+
+    // ── DOM refs ──
+    const entriesList = document.getElementById('entriesList');
+    const entryCount = document.getElementById('entryCount');
+    const editorForm = document.getElementById('editorForm');
+    const emptyState = document.getElementById('emptyState');
+    const formHeading = document.getElementById('formHeading');
+    const saveStatus = document.getElementById('saveStatus');
+    const addEntryBtn = document.getElementById('addEntryBtn');
+    const deleteEntryBtn = document.getElementById('deleteEntryBtn');
+    const tagsWrap = document.getElementById('tagsWrap');
+    const tagInput = document.getElementById('tagInput');
+    const mediaList = document.getElementById('mediaList');
+    const addMediaBtn = document.getElementById('addMediaBtn');
+    const importModal = document.getElementById('importModal');
+    const themeToggle = document.getElementById('themeToggle');
+
+    // ── Theme ──
+    const savedTheme = localStorage.getItem('portfolio_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeToggle.addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('portfolio_theme', next);
+    });
+
+    // ── Sidebar render ──
+    function renderSidebar() {
+      entriesList.innerHTML = '';
+      entryCount.textContent = entries.length;
+
+      entries.forEach((entry) => {
+        const item = document.createElement('div');
+        item.className = 'entry-item' + (entry.id === activeId ? ' is-active' : '');
+        item.setAttribute('role', 'listitem');
+        item.setAttribute('draggable', 'true');
+        item.dataset.id = entry.id;
+        item.tabIndex = 0;
+        item.setAttribute('aria-label', `${entry.year}: ${entry.title}`);
+
+        item.innerHTML = `
+          <span class="entry-item__drag" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
+          </span>
+          <div class="entry-item__info">
+            <div class="entry-item__year">${entry.year || '—'}</div>
+            <div class="entry-item__title">${entry.title || 'Untitled'}</div>
+          </div>
+          <button class="entry-item__del" aria-label="Delete ${entry.title || 'entry'}" data-id="${entry.id}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        `;
+
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.entry-item__del')) return;
+          loadEntry(entry.id);
+        });
+
+        item.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadEntry(entry.id); }
+        });
+
+        item.querySelector('.entry-item__del').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete "${entry.title || 'this entry'}"?`)) {
+            entries = entries.filter(en => en.id !== entry.id);
+            saveEntries(entries);
+            if (activeId === entry.id) { activeId = null; showEmpty(); }
+            renderSidebar();
+          }
+        });
+
+        // Drag and drop
+        item.addEventListener('dragstart', (e) => {
+          dragSrcId = entry.id;
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          document.querySelectorAll('.entry-item').forEach(el => el.classList.remove('drag-over'));
+          item.classList.add('drag-over');
+        });
+        item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+        item.addEventListener('drop', (e) => {
+          e.preventDefault();
+          item.classList.remove('drag-over');
+          if (dragSrcId && dragSrcId !== entry.id) {
+            const srcIdx = entries.findIndex(en => en.id === dragSrcId);
+            const dstIdx = entries.findIndex(en => en.id === entry.id);
+            const [moved] = entries.splice(srcIdx, 1);
+            entries.splice(dstIdx, 0, moved);
+            saveEntries(entries);
+            renderSidebar();
+          }
+        });
+
+        entriesList.appendChild(item);
+      });
+    }
+
+    function showEmpty() {
+      emptyState.style.display = 'flex';
+      editorForm.style.display = 'none';
+    }
+
+    // ── Load entry into form ──
+    function loadEntry(id) {
+      const entry = entries.find(e => e.id === id);
+      if (!entry) return;
+      activeId = id;
+
+      formHeading.textContent = entry.title || 'Edit Entry';
+      document.getElementById('fieldYear').value = entry.year || '';
+      document.getElementById('fieldRole').value = entry.role || '';
+      document.getElementById('fieldTitle').value = entry.title || '';
+      document.getElementById('fieldDesc').value = entry.description || '';
+      document.getElementById('fieldWho').value = entry.who || '';
+      document.getElementById('fieldWhat').value = entry.what || '';
+      document.getElementById('fieldWhere').value = entry.where || '';
+      document.getElementById('fieldWhy').value = entry.why || '';
+
+      currentTags = [...(entry.tags || [])];
+      renderTags();
+
+      currentMedia = JSON.parse(JSON.stringify(entry.media || []));
+      renderMedia();
+
+      clearStatus();
+      emptyState.style.display = 'none';
+      editorForm.style.display = 'block';
+      renderSidebar();
+
+      document.getElementById('fieldYear').focus();
+    }
+
+    // ── New entry ──
+    addEntryBtn.addEventListener('click', () => {
+      const newEntry = {
+        id: uid(),
+        year: new Date().getFullYear().toString(),
+        title: '',
+        role: '',
+        description: '',
+        who: '', what: '', where: '', why: '',
+        tags: [],
+        media: []
+      };
+      entries.push(newEntry);
+      saveEntries(entries);
+      renderSidebar();
+      loadEntry(newEntry.id);
+    });
+
+    // ── Delete from form ──
+    deleteEntryBtn.addEventListener('click', () => {
+      if (!activeId) return;
+      const entry = entries.find(e => e.id === activeId);
+      if (confirm(`Delete "${entry?.title || 'this entry'}"? This cannot be undone.`)) {
+        entries = entries.filter(e => e.id !== activeId);
+        saveEntries(entries);
+        activeId = null;
+        showEmpty();
+        renderSidebar();
+      }
+    });
+
+    // ── Save form ──
+    editorForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!activeId) return;
+
+      const idx = entries.findIndex(en => en.id === activeId);
+      if (idx === -1) return;
+
+      entries[idx] = {
+        ...entries[idx],
+        year: document.getElementById('fieldYear').value.trim(),
+        role: document.getElementById('fieldRole').value.trim(),
+        title: document.getElementById('fieldTitle').value.trim(),
+        description: document.getElementById('fieldDesc').value.trim(),
+        who: document.getElementById('fieldWho').value.trim(),
+        what: document.getElementById('fieldWhat').value.trim(),
+        where: document.getElementById('fieldWhere').value.trim(),
+        why: document.getElementById('fieldWhy').value.trim(),
+        tags: [...currentTags],
+        media: JSON.parse(JSON.stringify(currentMedia))
+      };
+
+      formHeading.textContent = entries[idx].title || 'Edit Entry';
+
+      const ok = saveEntries(entries);
+      renderSidebar();
+      showStatus(ok ? 'Saved' : 'Save failed', ok);
+    });
+
+    function showStatus(msg, ok = true) {
+      saveStatus.textContent = msg;
+      saveStatus.className = 'save-status ' + (ok ? 'is-saved' : 'is-error');
+      setTimeout(() => clearStatus(), 3000);
+    }
+    function clearStatus() {
+      saveStatus.textContent = '';
+      saveStatus.className = 'save-status';
+    }
+
+    // ── Tags ──
+    function renderTags() {
+      tagsWrap.innerHTML = '';
+      currentTags.forEach((tag, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.innerHTML = `${tag}<button class="tag-chip__remove" aria-label="Remove tag ${tag}">×</button>`;
+        chip.querySelector('button').addEventListener('click', () => {
+          currentTags.splice(i, 1);
+          renderTags();
+        });
+        tagsWrap.appendChild(chip);
+      });
+      tagsWrap.appendChild(tagInput);
+      tagInput.focus();
+    }
+
+    tagInput.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ',') && tagInput.value.trim()) {
+        e.preventDefault();
+        const val = tagInput.value.replace(/,/g, '').trim();
+        if (val && !currentTags.includes(val)) { currentTags.push(val); renderTags(); }
+        tagInput.value = '';
+      }
+      if (e.key === 'Backspace' && !tagInput.value && currentTags.length) {
+        currentTags.pop();
+        renderTags();
+      }
+    });
+
+    // ── Media ──
+    function renderMedia() {
+      mediaList.innerHTML = '';
+      currentMedia.forEach((item, i) => {
+        const el = buildMediaEntryEl(item, i);
+        mediaList.appendChild(el);
+      });
+    }
+
+    function buildMediaEntryEl(item, i) {
+      const wrap = document.createElement('div');
+      wrap.className = 'media-entry';
+      wrap.setAttribute('role', 'listitem');
+
+      wrap.innerHTML = `
+        <div class="media-entry__header">
+          <span class="media-entry__num mono">${String(i+1).padStart(2,'0')}</span>
+          <select class="media-entry__type-select" aria-label="Media type" data-field="type">
+            <option value="image" ${item.type==='image'?'selected':''}>Image</option>
+            <option value="youtube" ${item.type==='youtube'?'selected':''}>YouTube</option>
+            <option value="vimeo" ${item.type==='vimeo'?'selected':''}>Vimeo</option>
+            <option value="video" ${item.type==='video'?'selected':''}>Video (direct URL)</option>
+          </select>
+          <button type="button" class="media-entry__remove" aria-label="Remove media item ${i+1}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="media-entry__body">
+          <div class="field-group" style="margin:0">
+            <label class="field-label" for="mediaUrl_${i}">URL</label>
+            <input class="field-input" type="url" id="mediaUrl_${i}" data-field="url" value="${item.url||''}" placeholder="https://res.cloudinary.com/..." aria-label="Media URL">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label" for="mediaAlt_${i}">Alt text / description</label>
+            <input class="field-input" type="text" id="mediaAlt_${i}" data-field="alt" value="${item.alt||''}" placeholder="Describe for accessibility" aria-label="Alt text">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label" for="mediaCaption_${i}">Caption (optional)</label>
+            <input class="field-input" type="text" id="mediaCaption_${i}" data-field="caption" value="${item.caption||''}" placeholder="Displayed below media" aria-label="Caption">
+          </div>
+          ${item.url && item.type === 'image' ? `<img class="media-preview" src="${item.url}" alt="${item.alt||''}" loading="lazy">` : ''}
+        </div>
+      `;
+
+      // Type change
+      wrap.querySelector('[data-field="type"]').addEventListener('change', (e) => {
+        currentMedia[i].type = e.target.value;
+      });
+
+      // URL change — update preview
+      wrap.querySelector('[data-field="url"]').addEventListener('input', (e) => {
+        currentMedia[i].url = e.target.value;
+        const prev = wrap.querySelector('.media-preview');
+        if (currentMedia[i].type === 'image' && e.target.value) {
+          if (prev) { prev.src = e.target.value; }
+          else {
+            const img = document.createElement('img');
+            img.className = 'media-preview';
+            img.src = e.target.value;
+            img.alt = currentMedia[i].alt || '';
+            img.loading = 'lazy';
+            wrap.querySelector('.media-entry__body').appendChild(img);
+          }
+        }
+      });
+
+      wrap.querySelector('[data-field="alt"]').addEventListener('input', (e) => { currentMedia[i].alt = e.target.value; });
+      wrap.querySelector('[data-field="caption"]').addEventListener('input', (e) => { currentMedia[i].caption = e.target.value; });
+
+      wrap.querySelector('.media-entry__remove').addEventListener('click', () => {
+        currentMedia.splice(i, 1);
+        renderMedia();
+      });
+
+      return wrap;
+    }
+
+    addMediaBtn.addEventListener('click', () => {
+      if (currentMedia.length >= 6) {
+        alert('Maximum 6 media items per entry.');
+        return;
+      }
+      currentMedia.push({ type: 'image', url: '', alt: '', caption: '' });
+      renderMedia();
+      const inputs = mediaList.querySelectorAll('[data-field="url"]');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+
+    // ── Export ──
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'timeline-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ── Import ──
+    document.getElementById('importBtn').addEventListener('click', () => {
+      importModal.classList.add('is-open');
+      importModal.setAttribute('aria-hidden', 'false');
+      document.getElementById('importJson').value = '';
+    });
+
+    document.getElementById('importCancelBtn').addEventListener('click', closeImport);
+    document.getElementById('importFileBtn').addEventListener('click', () => {
+      document.getElementById('importFile').click();
+    });
+
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => { document.getElementById('importJson').value = ev.target.result; };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('importConfirmBtn').addEventListener('click', () => {
+      const raw = document.getElementById('importJson').value.trim();
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('Expected an array');
+        entries = parsed;
+        saveEntries(entries);
+        renderSidebar();
+        closeImport();
+        showEmpty();
+        activeId = null;
+        alert(`Imported ${entries.length} entries.`);
+      } catch(e) {
+        alert('Import failed: ' + e.message);
+      }
+    });
+
+    function closeImport() {
+      importModal.classList.remove('is-open');
+      importModal.setAttribute('aria-hidden', 'true');
+    }
+
+    importModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeImport();
+    });
+
+    // ── Init ──
+    renderSidebar();
+    showEmpty();
+  </script>
+</body>
+</html>
