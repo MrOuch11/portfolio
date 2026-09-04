@@ -1,0 +1,244 @@
+/* ============================================================
+   PORTFOLIO TIMELINE â€” Shared Design System
+   Swiss International / Editorial â€” Slammin Design
+   ============================================================ */
+
+/* --- Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap');
+
+@import url("https://api.fontshare.com/v2/css?f[]=switzer@400&f[]=khand@700&f[]=sentient@200,201,300,301,400,401,500,501,700,701&f[]=space-grotesk@300,400,500,600,700&display=swap");
+
+/*
+font-family: 'Switzer', sans-serif;
+font-family: 'Khand', sans-serif;
+font-family: 'Sentient', serif;
+font-family: 'Space Grotesk', sans-serif;
+*/
+
+/* --- Design Tokens --- */
+:root {
+  /* Light mode (default) */
+  --c-bg:          #E6F2FF;
+  --c-bg-alt:      #D4E9FC;
+  --c-surface:     #F0F7FF;
+  --c-text:        #102A43;   /* Main dark navy text */
+  --c-text-muted:  #486581;   /* Secondary text */
+  --c-rule:        #B8D5ED;   /* Borders / timeline lines */
+  --c-rule-strong: #1F5F99;   /* Strong borders / important lines */
+  --c-accent:      #3B82C4;   /* Main blue accent */
+  --c-accent-dim:  rgba(59, 130, 196, 0.12); /* Faded accent */
+
+  /* Type */
+  --f-display: 'Space Grotesk', sans-serif;
+  --f-body:    'Sentient', serif;
+  --f-mono:    'Switzer', sans-serif;
+
+  /* Scale */
+  --fs-xs:   0.6875rem;   /* 11px */
+  --fs-sm:   0.8125rem;   /* 13px */
+  --fs-base: 1rem;        /* 16px */
+  --fs-md:   1.125rem;    /* 18px */
+  --fs-lg:   1.375rem;    /* 22px */
+  --fs-xl:   2rem;        /* 32px */
+  --fs-2xl:  3rem;        /* 48px */
+  --fs-3xl:  4.5rem;      /* 72px */
+  --fs-4xl:  7rem;        /* 112px */
+
+  /* Space */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+  --sp-24: 6rem;
+  --sp-32:8rem;
+  --sp-64:16rem;
+
+  /* Motion */
+  --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:  180ms;
+  --dur-med:   380ms;
+  --dur-slow:  700ms;
+
+  /* Layout */
+  --timeline-h: 100vh;
+  --panel-w: 100vw;
+  --header-h: 64px;
+}
+
+/* Dark mode */
+[data-theme="dark"] {
+  --c-bg:          #0B1726;   /* Main dark navy background */
+    --c-bg-alt:      #102238;   /* Alternate/section background */
+    --c-surface:     #152B43;   /* Cards / panels */
+    --c-text:        #EAF4FF;   /* Main light blue-white text */
+    --c-text-muted:  #9DB7CF;   /* Secondary text */
+    --c-rule:        #294B6A;   /* Borders / timeline lines */
+    --c-rule-strong: #5BA4E6;   /* Strong borders / important lines */
+    --c-accent:      #5BA4E6;   /* Main blue accent */
+    --c-accent-dim:  rgba(91, 164, 230, 0.14); /* Faded accent */
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto; /* GSAP handles scrolling */
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--f-body);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  overflow-x: hidden;
+  transition: background var(--dur-med) var(--ease-expo),
+              color var(--dur-med) var(--ease-expo);
+}
+
+/* --- WCAG Focus --- */
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Skip link */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: var(--sp-4);
+  z-index: 9999;
+  background: var(--c-accent);
+  color: #fff;
+  font-family: var(--f-mono);
+  font-size: var(--fs-sm);
+  padding: var(--sp-2) var(--sp-4);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.skip-link:focus { top: var(--sp-4); }
+
+/* --- Utility --- */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mono {
+  font-family: var(--f-mono);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.rule {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: var(--c-rule);
+}
+
+/* --- Site Header --- */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-8);
+  z-index: 100;
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-rule);
+  transition: background var(--dur-med) var(--ease-expo);
+}
+
+.site-header__logo {
+  font-family: var(--f-mono);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-text);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.site-header__logo-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  flex-shrink: 0;
+}
+
+.site-header__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* Icon button base */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  background: none;
+  border: 1px solid var(--c-rule);
+  border-radius: 2px;
+  color: var(--c-text);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.btn-icon:hover {
+  border-color: var(--c-text);
+  background: var(--c-accent-dim);
+}
+
+/* Progress indicator */
+.timeline-progress {
+  font-family: var(--f-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  color: var(--c-text-muted);
+  min-width: 3rem;
+  text-align: right;
+}
+
+/* --- Noise texture overlay --- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
